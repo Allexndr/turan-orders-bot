@@ -4,41 +4,55 @@ import os
 from aiogram import Bot, Dispatcher
 from aiogram.types import Update
 
-from app.config import settings
-from app.database import connect_to_mongo
+# Инициализация переменных окружения
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+MONGODB_URL = os.getenv('MONGODB_URL', 'mongodb://localhost:27017')
+DATABASE_NAME = os.getenv('DATABASE_NAME', 'turan_bot')
 
-# Import routers
-from app.routers import auth, catalog, order, stock, analytics, menu
-
-# Инициализация бота и диспетчера
-bot = Bot(token=settings.bot_token)
+# Создаем бота
+bot = Bot(token=BOT_TOKEN) if BOT_TOKEN else None
 dp = Dispatcher()
 
-# Register routers
-def register_routers(dp: Dispatcher):
-    dp.include_router(auth.router)
-    dp.include_router(menu.router)
-    dp.include_router(catalog.router)
-    dp.include_router(order.router)
-    dp.include_router(stock.router)
-    dp.include_router(analytics.router)
+# Глобальная переменная для отслеживания инициализации
+initialized = False
 
-register_routers(dp)
-
-# Глобальная переменная для отслеживания подключения к MongoDB
-mongo_connected = False
-
-async def ensure_mongo_connection():
-    global mongo_connected
-    if not mongo_connected:
-        await connect_to_mongo()
-        mongo_connected = True
-
-async def process_webhook(data):
-    """Обработка webhook от Telegram"""
+async def initialize_bot():
+    """Инициализация бота и подключений"""
+    global initialized
+    if initialized or not BOT_TOKEN:
+        return
+    
     try:
-        # Подключаемся к MongoDB если еще не подключены
-        await ensure_mongo_connection()
+        # Импортируем и регистрируем роутеры только при инициализации
+        from app.routers import auth, catalog, order, stock, analytics, menu
+        from app.database import connect_to_mongo
+        
+        # Подключаемся к MongoDB
+        await connect_to_mongo()
+        
+        # Регистрируем роутеры
+        dp.include_router(auth.router)
+        dp.include_router(menu.router)
+        dp.include_router(catalog.router)
+        dp.include_router(order.router)
+        dp.include_router(stock.router)
+        dp.include_router(analytics.router)
+        
+        initialized = True
+        print("Bot initialized successfully")
+        
+    except Exception as e:
+        print(f"Error initializing bot: {e}")
+        raise
+
+async def process_update(data):
+    """Обработка обновления от Telegram"""
+    try:
+        if not bot:
+            return {"error": "Bot token not configured"}
+            
+        # Инициализируем бота если еще не сделали
+        await initialize_bot()
         
         # Создаем объект Update
         update = Update(**data)
@@ -47,37 +61,54 @@ async def process_webhook(data):
         await dp.feed_update(bot, update)
         
         return {"status": "ok"}
+        
     except Exception as e:
-        print(f"Error processing webhook: {e}")
+        print(f"Error processing update: {e}")
         return {"error": str(e)}
 
 def handler(request):
-    """Главная функция для Vercel"""
+    """Обработчик для Vercel"""
     try:
-        # Парсим JSON из тела запроса
+        # Получаем тело запроса
         if hasattr(request, 'get_json'):
-            data = request.get_json()
+            # Flask-style request
+            data = request.get_json(force=True)
+        elif hasattr(request, 'json'):
+            # FastAPI-style request  
+            data = request.json()
         else:
-            # Для случая когда request это dict
-            body = request.get('body', '')
-            if isinstance(body, str):
-                data = json.loads(body)
+            # Vercel request object
+            body = getattr(request, 'body', '')
+            if isinstance(body, bytes):
+                body = body.decode('utf-8')
+            elif isinstance(body, str) and body:
+                pass
             else:
-                data = body
+                body = json.dumps(request) if hasattr(request, '__dict__') else '{}'
+            
+            data = json.loads(body) if body else {}
         
-        # Обрабатываем webhook асинхронно
-        result = asyncio.run(process_webhook(data))
+        # Обрабатываем обновление
+        result = asyncio.run(process_update(data))
         
         return {
             'statusCode': 200,
-            'headers': {'Content-Type': 'application/json'},
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
             'body': json.dumps(result)
         }
         
     except Exception as e:
-        print(f"Error in handler: {e}")
+        error_msg = f"Handler error: {str(e)}"
+        print(error_msg)
+        
         return {
             'statusCode': 500,
-            'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({"error": str(e)})
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({"error": error_msg})
         } 
