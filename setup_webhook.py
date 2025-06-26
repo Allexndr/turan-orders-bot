@@ -5,8 +5,8 @@ from app.config import settings
 async def setup_webhook():
     """Настройка веб-хука для Telegram бота"""
     
-    # URL вашего Vercel деплоя (замените на реальный)
-    WEBHOOK_URL = "https://your-vercel-app.vercel.app/api/webhook"
+    # URL вашего Vercel деплоя с правильным путем к функции
+    WEBHOOK_URL = "https://turan-bot.vercel.app/api/webhook"
     
     url = f"https://api.telegram.org/bot{settings.bot_token}/setWebhook"
     
