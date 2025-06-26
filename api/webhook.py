@@ -1,62 +1,87 @@
 import asyncio
 import json
 import os
-from http.server import BaseHTTPRequestHandler
+import sys
+import traceback
+
+# Добавляем путь к основному проекту
+sys.path.append('/var/task')
 
 # Инициализация переменных окружения
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 MONGODB_URL = os.getenv('MONGODB_URL', 'mongodb://localhost:27017')
 DATABASE_NAME = os.getenv('DATABASE_NAME', 'turan_bot')
 
-class handler(BaseHTTPRequestHandler):
-    def do_POST(self):
-        """Обработка POST запросов от Telegram"""
-        try:
-            print(f"Handler called with BOT_TOKEN: {'***' if BOT_TOKEN else 'None'}")
+def handler(request, context=None):
+    """Vercel handler function"""
+    try:
+        print(f"Handler called with method: {request.get('method', 'UNKNOWN')}")
+        print(f"BOT_TOKEN exists: {bool(BOT_TOKEN)}")
+        
+        # Обработка POST запросов (вебхуки от Telegram)
+        if request.get('method') == 'POST':
+            print("Processing POST request...")
             
-            # Отправляем ответ
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            
-            response = {
+            response_data = {
                 "status": "ok", 
                 "message": "Webhook working!",
+                "bot_token_exists": bool(BOT_TOKEN),
+                "mongodb_url_exists": bool(MONGODB_URL)
+            }
+            
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Content-Type': 'application/json',
+                },
+                'body': json.dumps(response_data)
+            }
+        
+        # Обработка GET запросов (тестирование)
+        elif request.get('method') == 'GET':
+            print("Processing GET request...")
+            
+            response_data = {
+                "status": "ok", 
+                "message": "Webhook endpoint working!",
+                "method": "GET",
                 "bot_token_exists": bool(BOT_TOKEN)
             }
             
-            self.wfile.write(json.dumps(response).encode('utf-8'))
-            
-        except Exception as e:
-            error_msg = f"Handler error: {str(e)}"
-            print(error_msg)
-            
-            self.send_response(500)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            
-            error_response = {"error": error_msg}
-            self.wfile.write(json.dumps(error_response).encode('utf-8'))
-    
-    def do_GET(self):
-        """Обработка GET запросов для тестирования"""
-        try:
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            
-            response = {
-                "status": "ok", 
-                "message": "Webhook endpoint working!",
-                "method": "GET"
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Content-Type': 'application/json',
+                },
+                'body': json.dumps(response_data)
+            }
+        
+        else:
+            return {
+                'statusCode': 405,
+                'headers': {
+                    'Content-Type': 'application/json',
+                },
+                'body': json.dumps({"error": "Method not allowed"})
             }
             
-            self.wfile.write(json.dumps(response).encode('utf-8'))
-            
-        except Exception as e:
-            self.send_response(500)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            
-            error_response = {"error": str(e)}
-            self.wfile.write(json.dumps(error_response).encode('utf-8')) 
+    except Exception as e:
+        error_msg = f"Handler error: {str(e)}"
+        print(f"ERROR: {error_msg}")
+        print(f"Traceback: {traceback.format_exc()}")
+        
+        return {
+            'statusCode': 500,
+            'headers': {
+                'Content-Type': 'application/json',
+            },
+            'body': json.dumps({"error": error_msg})
+        }
+
+# Для совместимости с разными форматами вызовов
+def handler_func(event, context=None):
+    """Alternative handler name"""
+    return handler(event, context)
+
+# Экспортируем обе версии
+__all__ = ['handler', 'handler_func'] 
