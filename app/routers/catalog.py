@@ -40,11 +40,11 @@ async def catalog_handler(callback: types.CallbackQuery):
     keyboard.adjust(1)  # По одной кнопке в ряд
     
     try:
-        await callback.message.edit_text(
-            "📦 **Каталог товаров**\n\nВыберите категорию:",
-            reply_markup=keyboard.as_markup(),
-            parse_mode="Markdown"
-        )
+    await callback.message.edit_text(
+        "📦 **Каталог товаров**\n\nВыберите категорию:",
+        reply_markup=keyboard.as_markup(),
+        parse_mode="Markdown"
+    )
     except Exception as e:
         # Если сообщение не изменилось, просто игнорируем ошибку
         pass
@@ -130,7 +130,7 @@ async def show_category_products(callback: types.CallbackQuery, category: str, p
     keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
     
     try:
-        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
     except Exception as e:
         # Если сообщение не изменилось, просто игнорируем ошибку
         pass
