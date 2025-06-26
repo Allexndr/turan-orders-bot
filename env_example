@@ -1,0 +1,10 @@
+# Telegram Bot Token
+BOT_TOKEN=7665066386:AAHSzFTptehCoWQhdxRSysjEc_bjQ1u8Lkw
+
+# MongoDB Atlas Connection
+# Замените на ваши реальные данные MongoDB Atlas
+MONGODB_URL=mongodb+srv://username:password@cluster0.mongodb.net/?retryWrites=true&w=majority
+DATABASE_NAME=turan
+
+# Для локального тестирования можно использовать:
+# MONGODB_URL=mongodb://localhost:27017 
