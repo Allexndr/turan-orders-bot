@@ -6,30 +6,15 @@ BOT_TOKEN = os.getenv('BOT_TOKEN')
 
 def handler(event, context=None):
     """Simple Vercel handler function"""
-    try:
-        # Возвращаем простой ответ для любого запроса
-        response_data = {
+    return {
+        'statusCode': 200,
+        'headers': {'Content-Type': 'application/json'},
+        'body': json.dumps({
             "status": "ok", 
-            "message": "Simple webhook working!",
+            "message": "Webhook working!",
             "bot_token_exists": bool(BOT_TOKEN)
-        }
-        
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Content-Type': 'application/json',
-            },
-            'body': json.dumps(response_data)
-        }
-        
-    except Exception as e:
-        return {
-            'statusCode': 500,
-            'headers': {
-                'Content-Type': 'application/json',
-            },
-            'body': json.dumps({"error": str(e)})
-        }
+        })
+    }
 
 # Для совместимости с разными форматами вызовов
 def handler_func(event, context=None):
