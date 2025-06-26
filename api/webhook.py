@@ -1,3 +1,4 @@
+from http.server import BaseHTTPRequestHandler
 import json
 import os
 
@@ -5,34 +6,29 @@ import os
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 MONGODB_URL = os.getenv('MONGODB_URL')
 
-def handler(event, context=None):
-    """Simple Vercel handler for Telegram webhook"""
-    
-    # Получаем HTTP метод
-    method = event.get('httpMethod', event.get('method', 'GET'))
-    
-    # GET запрос - статус
-    if method == 'GET':
-        return {
-            'statusCode': 200,
-            'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({
-                "status": "webhook_active",
-                "message": "Telegram bot webhook is running",
-                "bot_configured": bool(BOT_TOKEN),
-                "method": method
-            })
-        }
-    
-    # POST запрос - Telegram update
-    if method == 'POST':
-        body = event.get('body', '{}')
+class handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
         
-        # Парсим update
+        response = {
+            "status": "webhook_active",
+            "message": "Telegram bot webhook running on Vercel",
+            "bot_configured": bool(os.getenv('BOT_TOKEN'))
+        }
+        
+        self.wfile.write(json.dumps(response).encode())
+    
+    def do_POST(self):
         try:
-            update = json.loads(body) if isinstance(body, str) else body
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
             
-            # Извлекаем базовую информацию
+            # Парсим JSON
+            update = json.loads(post_data.decode('utf-8'))
+            
+            # Извлекаем данные
             chat_id = None
             message_text = None
             
@@ -43,27 +39,23 @@ def handler(event, context=None):
                 chat_id = update['callback_query'].get('message', {}).get('chat', {}).get('id')
                 message_text = update['callback_query'].get('data')
             
-            return {
-                'statusCode': 200,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({
-                    "status": "update_received",
-                    "chat_id": chat_id,
-                    "message": message_text,
-                    "update_type": "message" if 'message' in update else "callback" if 'callback_query' in update else "unknown"
-                })
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            response = {
+                "status": "update_received",
+                "chat_id": chat_id,
+                "message": message_text,
+                "update_type": "message" if 'message' in update else "callback" if 'callback_query' in update else "unknown"
             }
             
+            self.wfile.write(json.dumps(response).encode())
+            
         except Exception as e:
-            return {
-                'statusCode': 500,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({"error": f"Parse error: {str(e)}"})
-            }
-    
-    # Другие методы
-    return {
-        'statusCode': 405,
-        'headers': {'Content-Type': 'application/json'},
-        'body': json.dumps({"error": "Method not allowed"})
-    } 
+            self.send_response(500)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            error_response = {"error": str(e)}
+            self.wfile.write(json.dumps(error_response).encode()) 
