@@ -1,10 +1,11 @@
 {
   "version": 2,
-  "functions": {
-    "api/webhook.py": {
-      "runtime": "@vercel/python"
+  "builds": [
+    {
+      "src": "api/webhook.py",
+      "use": "@vercel/python"
     }
-  },
+  ],
   "routes": [
     {
       "src": "/(.*)",
@@ -12,7 +13,6 @@
     }
   ],
   "env": {
-    "PYTHONPATH": "./",
-    "PYTHON_VERSION": "3.12"
+    "PYTHONPATH": "./"
   }
 } 
