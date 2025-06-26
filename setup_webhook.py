@@ -1,31 +1,30 @@
-import asyncio
-import aiohttp
-from app.config import settings
+import requests
+import os
+from dotenv import load_dotenv
 
-async def setup_webhook():
-    """Настройка веб-хука для Telegram бота"""
+load_dotenv()
+
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+WEBHOOK_URL = 'https://turan-bot.vercel.app/api/webhook'
+
+def setup_webhook():
+    url = f'https://api.telegram.org/bot{BOT_TOKEN}/setWebhook'
+    data = {'url': WEBHOOK_URL}
     
-    # URL вашего Vercel деплоя с правильным путем к функции
-    WEBHOOK_URL = "https://turan-bot.vercel.app/api/webhook"
+    response = requests.post(url, data=data)
+    result = response.json()
     
-    url = f"https://api.telegram.org/bot{settings.bot_token}/setWebhook"
+    print(f"Webhook setup result: {result}")
     
-    data = {
-        "url": WEBHOOK_URL,
-        "drop_pending_updates": True
-    }
-    
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=data) as response:
-            result = await response.json()
-            print(f"Webhook setup result: {result}")
-            
-            if result.get("ok"):
-                print("✅ Webhook успешно настроен!")
-                print(f"📡 URL: {WEBHOOK_URL}")
-            else:
-                print("❌ Ошибка настройки webhook:")
-                print(result.get("description", "Unknown error"))
+    if result.get('ok'):
+        print("✅ Webhook успешно настроен!")
+        print(f"📡 URL: {WEBHOOK_URL}")
+    else:
+        print("❌ Ошибка настройки webhook:")
+        print(result.get('description', 'Неизвестная ошибка'))
 
 if __name__ == "__main__":
-    asyncio.run(setup_webhook()) 
+    if not BOT_TOKEN:
+        print("❌ BOT_TOKEN не найден в .env файле")
+    else:
+        setup_webhook() 
