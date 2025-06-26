@@ -20,11 +20,17 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Content-type', 'application/json')
         self.end_headers()
         
+        # Маскированный токен для отладки
+        masked_token = ""
+        if BOT_TOKEN:
+            masked_token = BOT_TOKEN[:10] + "..." + BOT_TOKEN[-10:] if len(BOT_TOKEN) > 20 else "***"
+        
         response_data = {
             "status": "ok",
             "service": "Turan Bot Webhook",
-            "version": "2.1",
+            "version": "2.2",
             "bot_token_configured": bool(BOT_TOKEN),
+            "bot_token_preview": masked_token,
             "mongodb_configured": bool(MONGODB_URL)
         }
         
@@ -189,8 +195,15 @@ def send_telegram_message(chat_id, text, reply_markup=None, is_callback=False, m
         if reply_markup:
             data["reply_markup"] = reply_markup
         
+        # Логирование для отладки
+        print(f"Sending to URL: {url}")
+        print(f"Data: {json.dumps(data, indent=2)}")
+        
         response = requests.post(url, json=data, timeout=10)
         result = response.json()
+        
+        print(f"Response status: {response.status_code}")
+        print(f"Response: {json.dumps(result, indent=2)}")
         
         return result.get('ok', False)
                 
